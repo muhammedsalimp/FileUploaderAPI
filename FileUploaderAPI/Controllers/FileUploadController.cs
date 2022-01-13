@@ -1,4 +1,4 @@
-﻿using FileUploaderAPI.DataAccess;
+using FileUploaderAPI.DataAccess;
 using FileUploaderAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,10 +11,12 @@ namespace FileUploaderAPI.Controllers
     public class FileUploadController : ControllerBase
     {
         private FileUploaderDbContext _context;
+        private readonly IWebHostEnvironment _hostingEnvironment;
 
-        public FileUploadController(FileUploaderDbContext context)
+        public FileUploadController(FileUploaderDbContext context, IWebHostEnvironment hostingEnvironment)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            _hostingEnvironment = hostingEnvironment ?? throw new ArgumentNullException(nameof(hostingEnvironment));
         }
 
         // GET: api/FileUpload/GenerateUploadURL
@@ -54,12 +56,21 @@ namespace FileUploaderAPI.Controllers
 
         // PUT api/<FileUploadController>/5
         [HttpPut("{id}")]
-        public IActionResult Put(Guid id, IFormFile file)
+        public IActionResult Put(string guid, IFormFile file)
         {
             if (file.Length > 0)
             {
-                var filePath = Path.GetTempFileName();
+                // Create a folder "Uploads" in the hosting content root path.
+                string path = Path.Combine(_hostingEnvironment.ContentRootPath, "Uploads");
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
 
+                // Create a path by combining the above folder with GUID and file name
+                var filePath = Path.Combine(path, guid, file.FileName);
+
+                // Write file to the path
                 using (var stream = System.IO.File.Create(filePath))
                 {
                     file.CopyToAsync(stream);
